@@ -1,20 +1,17 @@
 import yaml
 
-from pyspark import SparkContext, SparkConf
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType, TimestampType, StringType, IntegerType, DoubleType
+from pyspark.sql.functions import to_date, countDistinct
 
 from utils import csv_to_db, CUSTOMER_STRUCTURE, ITEM_STRUCTURE, ORDER_STRUCTURE, PRODUCT_STRUCTURE
 
-if __name__ == "__main__":
-    # conf = SparkConf().setAppName('free2move').setMaster('local[2]')
-    # sc = SparkContext(conf = conf)
-    # customers = sc.textFile('data/customer.csv')
+CONFIG_FILEPATH = 'config.yaml'
 
-    config_pathfile = 'config.yaml'
+if __name__ == "__main__":
     
     config = None
-    with open(config_pathfile, "r") as f:
+    with open(CONFIG_FILEPATH, "r") as f:
         config = yaml.safe_load(f)
 
     spark = SparkSession \
@@ -57,11 +54,38 @@ if __name__ == "__main__":
     item_df = db_extract(spark, config['db'], 'item')
     product_df = db_extract(spark, config['db'], 'product')
 
-    # order_df.printSchema()
+    # Compute daily orders
+    if False:
+        def get_daily_orders(daily_orders_df, order_date):
+            return daily_orders_df \
+                .filter(daily_orders_df.order_date == order_date)
 
-    order_df \
-        .join(item_df,order_df.order_id ==  item_df.order_id,"left") \
-        .join(product_df,item_df.product_id ==  product_df.product_id,"left") \
+        daily_orders_df = customer_df \
+            .join(order_df, customer_df.customer_id == order_df.customer_id, "left") \
+            .withColumn("order_date", to_date("order_purchase_timestamp")) \
+            .groupBy("customer_unique_id","order_date") \
+            .count()
+
+        get_daily_orders(daily_orders_df, '2018-05-28') \
+            .sort(desc("count")) \
+            .show(10, False)
+    # .groupBy("customer_unique_id","order_date") \
+
+    # All
+    df = customer_df \
+        .join(order_df, customer_df.customer_id == order_df.customer_id, "left") \
+        .withColumn("order_date", to_date("order_purchase_timestamp")) \
+        .join(item_df, order_df.order_id == item_df.order_id, "left") \
+        .groupBy("customer_unique_id","order_date") \
+        .countDistinct("order_id") \
+        .sum("price")
+
+    df \
         .show(10, False)
+
+    # order_df \
+    #     .join(item_df,order_df.order_id ==  item_df.order_id,"left") \
+    #     .join(product_df,item_df.product_id ==  product_df.product_id,"left") \
+    #     .show(10, False)
 
     # print(f"nb_lines: {customers.count()}")
