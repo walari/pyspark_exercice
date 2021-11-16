@@ -1,8 +1,7 @@
 import yaml
 
 from pyspark.sql import SparkSession
-from pyspark.sql.types import StructType, TimestampType, StringType, IntegerType, DoubleType
-from pyspark.sql.functions import to_date, countDistinct
+from pyspark.sql.functions import to_date
 
 from utils import csv_to_db, CUSTOMER_STRUCTURE, ITEM_STRUCTURE, ORDER_STRUCTURE, PRODUCT_STRUCTURE
 
@@ -21,22 +20,22 @@ if __name__ == "__main__":
         .getOrCreate()
 
     # Extract csv data and store in Postgres DB
-    # csv_to_db(spark, config.get('db'),
-    #     data_filepath = config.get('customer_filepath'),
-    #     data_structure=CUSTOMER_STRUCTURE,
-    #     table_name='customer')
-    # csv_to_db(spark, config.get('db'),
-    #     data_filepath = config.get('item_filepath'),
-    #     data_structure=ITEM_STRUCTURE,
-    #     table_name='item')
-    # csv_to_db(spark, config.get('db'),
-    #     data_filepath = config.get('order_filepath'),
-    #     data_structure=ORDER_STRUCTURE,
-    #     table_name='order')
-    # csv_to_db(spark, config.get('db'),
-    #     data_filepath = config.get('product_filepath'),
-    #     data_structure=PRODUCT_STRUCTURE,
-    #     table_name='product')
+    csv_to_db(spark, config.get('db'),
+        data_filepath = config.get('customer_filepath'),
+        data_structure=CUSTOMER_STRUCTURE,
+        table_name='customer')
+    csv_to_db(spark, config.get('db'),
+        data_filepath = config.get('item_filepath'),
+        data_structure=ITEM_STRUCTURE,
+        table_name='item')
+    csv_to_db(spark, config.get('db'),
+        data_filepath = config.get('order_filepath'),
+        data_structure=ORDER_STRUCTURE,
+        table_name='order')
+    csv_to_db(spark, config.get('db'),
+        data_filepath = config.get('product_filepath'),
+        data_structure=PRODUCT_STRUCTURE,
+        table_name='product')
 
     # Compute customer stats
     def db_extract(spark, db_config, table_name):
@@ -69,23 +68,3 @@ if __name__ == "__main__":
         get_daily_orders(daily_orders_df, '2018-05-28') \
             .sort(desc("count")) \
             .show(10, False)
-    # .groupBy("customer_unique_id","order_date") \
-
-    # All
-    df = customer_df \
-        .join(order_df, customer_df.customer_id == order_df.customer_id, "left") \
-        .withColumn("order_date", to_date("order_purchase_timestamp")) \
-        .join(item_df, order_df.order_id == item_df.order_id, "left") \
-        .groupBy("customer_unique_id","order_date") \
-        .countDistinct("order_id") \
-        .sum("price")
-
-    df \
-        .show(10, False)
-
-    # order_df \
-    #     .join(item_df,order_df.order_id ==  item_df.order_id,"left") \
-    #     .join(product_df,item_df.product_id ==  product_df.product_id,"left") \
-    #     .show(10, False)
-
-    # print(f"nb_lines: {customers.count()}")
